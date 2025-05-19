@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>VOLAR - TODOS TUS VIAJES EN UN SOLO LUGAR</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background: #f7f9fb;
+    }
+    textarea {
+      width: 100%;
+      height: 200px;
+      padding: 10px;
+      font-family: monospace;
+      margin-bottom: 10px;
+    }
+    button {
+      padding: 8px 16px;
+      font-size: 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    .btn-action {
+      background-color: #0066cc;
+      color: white;
+    }
+    .btn-action:hover {
+      background-color: #004999;
+    }
+    .flight {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      position: relative;
+    }
+    .flight h3 {
+      margin-top: 0;
+      color: #333;
+    }
+    .info {
+      margin-top: 10px;
+    }
+    .label {
+      font-weight: bold;
+      color: #555;
+    }
+    .flight-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 15px;
+  position: static;
+}
+
+
+    .waiting-time {
+      margin-bottom: 20px;
+      font-style: italic;
+      color: #555;
+      padding-left: 20px;
+    }
+    embed, img {
+      max-width: 100%;
+      margin-top: 10px;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: white;
+      padding: 20px;
+      max-width: 90%;
+      max-height: 90%;
+      overflow: auto;
+      border-radius: 10px;
+      position: relative;
+    }
+    .modal-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      cursor: pointer;
+      background: #ccc;
+      border: none;
+      border-radius: 4px;
+      padding: 5px 10px;
+    }
+    #importFileInput {
+      display: none;
+    }
+h2 {
+  text-align: center;
+}
+
+  </style>
+</head>
+<body>
+
+  <h2>VOLAR - TODOS TUS VIAJES EN UN SOLO LUGAR</h2>
+
+  <textarea id="jsonInput" placeholder="Aquí va tu código de vuelo Skyscanner. ¿Cómo conseguirlo?
+
+1- Haz click derecho y presiona 'Inspeccionar' desde una computadora
+2- Allí presiona 'Red'
+3- Entra a tu vuelo en Skyscanner
+4- Recarga la página y busca el item 'details'. Haz click en él
+5- Copia y pega aquí lo que está en 'Respuesta'
+
+Si no puedes, todavía lo puedes hacer manualmente o importar un archivo de vuelo"></textarea>
+  <button onclick="procesar()">Guardar</button>
+
+  <button onclick="document.getElementById('importFileInput').click()">📂 Importar vuelo</button>
+  <input type="file" id="importFileInput" accept="application/json" onchange="importarVuelo(event)">
+<div id="formManualContainer" style="display: flex; justify-content: center; margin-bottom: 20px;">
+  <form id="formManual" style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; max-width: 600px; font-family: sans-serif;">
+    <h3 style="text-align: center; margin-top: 0;">Agregar vuelo manualmente</h3>
+
+    <label>Origen (código aeropuerto):<br>
+      <input type="text" name="origen" placeholder="Ej: MAD" style="width: 100%; padding: 6px; margin-bottom: 10px;" />
+    </label>
+
+    <label>Destino (código aeropuerto):<br>
+      <input type="text" name="destino" placeholder="Ej: BCN" style="width: 100%; padding: 6px; margin-bottom: 10px;" />
+    </label>
+
+    <label>Número de vuelo:<br>
+      <input type="text" name="flightNumber" placeholder="Ej: 1234" style="width: 100%; padding: 6px; margin-bottom: 10px;" />
+    </label>
+
+    <label>Aerolínea (código):<br>
+      <input type="text" name="airlineCode" placeholder="Ej: ib" style="width: 100%; padding: 6px; margin-bottom: 10px;" />
+    </label>
+
+    <label>Nombre aerolínea:<br>
+      <input type="text" name="marketingCarrierName" placeholder="Ej: Iberia" style="width: 100%; padding: 6px; margin-bottom: 10px;" />
+    </label>
+
+    <label>Fecha y hora salida:<br>
+      <input type="datetime-local" name="salida" style="width: 100%; padding: 6px; margin-bottom: 10px;" />
+    </label>
+
+    <label>Fecha y hora llegada:<br>
+      <input type="datetime-local" name="llegada" style="width: 100%; padding: 6px; margin-bottom: 10px;" />
+    </label>
+
+    <label>Duración (minutos):<br>
+      <input type="number" name="duracionMin" min="0" style="width: 100%; padding: 6px; margin-bottom: 10px;" />
+    </label>
+
+    <button type="button" onclick="agregarVueloManual()" style="background-color: #0066cc; color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer;">
+      Agregar vuelo manual
+    </button>
+  </form>
+</div>
+
+
+  <div id="resultado"></div>
+
+  <div id="modal" class="modal" style="display: none;">
+    <div class="modal-content" id="modalContent">
+      <button class="modal-close" onclick="cerrarModal()">❌</button>
+      <div id="modalInner"></div>
+    </div>
+  </div>
+
+  <script>
+    let vuelosAcumulados = [];
+
+    // --- LocalStorage: cargar vuelos al iniciar ---
+    function cargarDesdeLocalStorage() {
+      const json = localStorage.getItem('vuelosAcumulados');
+      if (json) {
+        try {
+          vuelosAcumulados = JSON.parse(json);
+          // Restaurar fechas como Date objects
+          vuelosAcumulados.forEach(v => {
+            v.salidaDate = new Date(v.salidaDate);
+            v.llegadaDate = new Date(v.llegadaDate);
+          });
+          renderizarVuelos();
+          if (vuelosAcumulados.length > 0) {
+            iniciarCuentaRegresiva(vuelosAcumulados[0].salidaDate);
+          }
+        } catch (e) {
+          console.error("Error al parsear localStorage:", e);
+        }
+      }
+    }
+
+    // --- Guardar en localStorage ---
+    function guardarEnLocalStorage() {
+      localStorage.setItem('vuelosAcumulados', JSON.stringify(vuelosAcumulados));
+    }
+
+    function formatearMinutos(minutos) {
+      const h = Math.floor(minutos / 60);
+      const m = minutos % 60;
+      return `${h}h ${m}m`;
+    }
+
+    function formatearDiferencia(ms) {
+      const totalMin = Math.floor(ms / 60000);
+      const h = Math.floor(totalMin / 60);
+      const m = totalMin % 60;
+      return `${h}h ${m}m`;
+    }
+
+    function clasificarEspera(horas) {
+      if (horas < 1) return "Infactible";
+      else if (horas < 2) return "Mucho apuro";
+      else if (horas < 3) return "Espera normal";
+      else if (horas < 5) return "Sin apuro";
+      else return "Mucha espera";
+    }
+
+    // --- Procesar JSON original ---
+    function procesar() {
+      const raw = document.getElementById("jsonInput").value.trim();
+      if (!raw) return alert("Introduce un JSON válido.");
+
+      try {
+        const data = JSON.parse(raw);
+        let vuelosNuevos = [];
+
+        if (Array.isArray(data.itinerary)) {
+          data.itinerary.forEach(itin => {
+            vuelosNuevos = vuelosNuevos.concat(itin.legs);
+          });
+        } else if (data.itinerary && Array.isArray(data.itinerary.legs)) {
+          vuelosNuevos = data.itinerary.legs;
+        } else {
+          throw new Error("JSON no tiene la estructura esperada.");
+        }
+
+        let segmentosPlanos = [];
+        vuelosNuevos.forEach(leg => {
+          leg.segments.forEach(segment => {
+            const salidaDate = new Date(segment.departure.year, segment.departure.month - 1, segment.departure.day, segment.departure.hour, segment.departure.minute);
+            const llegadaDate = new Date(segment.arrival.year, segment.arrival.month - 1, segment.arrival.day, segment.arrival.hour, segment.arrival.minute);
+
+            segmentosPlanos.push({
+              id: crypto.randomUUID(),
+              salidaDate,
+              llegadaDate,
+              origen: segment.origin.airport.displayCode,
+              destino: segment.destination.airport.displayCode,
+              flightNumber: segment.flightNumber,
+              airlineCode: segment.marketingCarrier.displayCode.toLowerCase(),
+              marketingCarrierName: segment.marketingCarrier.name,
+              salidaStr: `${segment.departure.day}/${segment.departure.month}/${segment.departure.year} ${segment.departure.hour}:${segment.departure.minute.toString().padStart(2, '0')}`,
+              llegadaStr: `${segment.arrival.day}/${segment.arrival.month}/${segment.arrival.year} ${segment.arrival.hour}:${segment.arrival.minute.toString().padStart(2, '0')}`,
+              duracion: formatearMinutos(segment.durationMinutes ?? leg.durationMinutes ?? 0),
+              transportDescription: segment.amenityInfo.transportDescription,
+              layout: segment.amenityInfo.layout,
+              seatPitch: segment.amenityInfo.seatPitch,
+              mealsDescription: segment.amenityInfo.meals.description,
+              wifiDescription: segment.amenityInfo.wifi.description,
+              entertainmentDescription: segment.amenityInfo.entertainment.description,
+              powerDescription: segment.amenityInfo.power.description,
+              boardingPassContent: null,
+              reservaURL: null
+            });
+          });
+        });
+
+        vuelosAcumulados = vuelosAcumulados.concat(segmentosPlanos);
+        vuelosAcumulados.sort((a, b) => a.salidaDate - b.salidaDate);
+
+        guardarEnLocalStorage();
+        renderizarVuelos();
+        if (vuelosAcumulados.length > 0) {
+          iniciarCuentaRegresiva(vuelosAcumulados[0].salidaDate);
+        }
+      } catch (err) {
+        alert("❌ Error al procesar JSON: " + err.message);
+      }
+    }
+
+    // --- Renderizar todos los vuelos ---
+    function renderizarVuelos() {
+      const resultado = document.getElementById("resultado");
+      let html = `<ul style="list-style:none; padding-left:0;">`;
+
+      for (let i = 0; i < vuelosAcumulados.length; i++) {
+        const segment = vuelosAcumulados[i];
+        const flightradarURL = `https://www.flightradar24.com/data/flights/${segment.airlineCode}${segment.flightNumber}`;
+
+        html += `
+          <li>
+            <div class="flight" id="flight-${segment.id}">
+             
+              <h3>🛫${segment.origen} → ${segment.destino}🛬</h3>
+              <div class="info">
+                <span class="label">Número de vuelo:</span> ${segment.marketingCarrierName} ${segment.flightNumber}
+              </div>
+              <div class="info">
+                <span class="label">🕛🛫</span> ${segment.salidaStr}
+                ${i === 0 ? '<span id="countdown" style="margin-left: 10px; color: #d00; font-weight: bold;"></span>' : ''}
+              </div>
+              <div class="info"><span class="label">🕛🛬</span> ${segment.llegadaStr}</div>
+              <div class="info"><span class="label">⏲️</span> ${segment.duracion}</div>
+              <div class="info"><span class="label">✈️</span> ${segment.transportDescription}</div>
+              <div class="info"><span class="label">💺💺💺  💺💺💺</span> ${segment.layout || "N/A"}</div>
+              <div class="info"><span class="label">💺←→💺</span> ${segment.seatPitch || "N/A"}</div>
+              <div class="info"><span class="label">🍴</span> ${segment.mealsDescription}</div>
+              <div class="info"><span class="label">🛜</span> ${segment.wifiDescription}</div>
+              <div class="info"><span class="label">▶️</span> ${segment.entertainmentDescription}</div>
+              <div class="info"><span class="label">🔌</span> ${segment.powerDescription}</div>
+ <div class="flight-actions">
+                <button class="btn-action" onclick="window.open('${flightradarURL}', '_blank')">🛫 Rastrea tu vuelo y avión con Flightradar24</button>
+                <button class="btn-action" onclick="configurarReserva('${segment.id}')">📄 Tu Reserva</button>
+                <button class="btn-action" onclick="mostrarTarjeta('${segment.id}')">🎟 Tarjeta de Embarque</button>
+                <button class="btn-action" onclick="exportarVuelo('${segment.id}')">💾 Exportar vuelo</button>
+                <button class="btn-action" style="background-color:#cc3300;" onclick="eliminarVuelo('${segment.id}')">🗑 Eliminar</button>
+                <input type="file" accept="application/pdf,image/*" style="display:none;" id="file-${segment.id}" onchange="cargarArchivo(event, '${segment.id}')">
+              </div>
+            </div>
+          </li>
+        `;
+
+        if (i < vuelosAcumulados.length - 1) {
+          const currentArrival = segment.llegadaDate;
+          const nextDeparture = vuelosAcumulados[i + 1].salidaDate;
+          const diffMs = nextDeparture - currentArrival;
+          const diffHoras = diffMs / (1000 * 60 * 60);
+
+          if (diffHoras > 0 && diffHoras < 24) {
+            const clasificacion = clasificarEspera(diffHoras);
+            html += `
+              <li class="waiting-time">
+                ⏳ Escala: ${formatearDiferencia(diffMs)} — <strong>${clasificacion}</strong>
+              </li>
+            `;
+          } else if (diffHoras >= 24) {
+            const dias = Math.floor(diffHoras / 24);
+            const ciudad = vuelosAcumulados[i].destino;
+            html += `
+              <li class="waiting-time">
+                🧳 ${dias} día${dias > 1 ? 's' : ''} en ${ciudad}
+              </li>
+            `;
+          }
+        }
+      }
+
+      html += `</ul>`;
+      resultado.innerHTML = html;
+    }
+
+    // --- Exportar vuelo individual a JSON ---
+    function exportarVuelo(id) {
+      const vuelo = vuelosAcumulados.find(v => v.id === id);
+      if (!vuelo) return alert("Vuelo no encontrado.");
+
+      // No podemos guardar objetos Date en JSON, así que convertimos a ISO strings
+      const vueloExport = {...vuelo,
+        salidaDate: vuelo.salidaDate.toISOString(),
+        llegadaDate: vuelo.llegadaDate.toISOString()
+      };
+
+      const blob = new Blob([JSON.stringify(vueloExport, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vuelo_${vuelo.origen}_${vuelo.destino}_${vuelo.flightNumber}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // --- Importar vuelo desde archivo JSON ---
+    function importarVuelo(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const vueloImportado = JSON.parse(e.target.result);
+
+          // Reconstruir fechas Date
+          vueloImportado.salidaDate = new Date(vueloImportado.salidaDate);
+          vueloImportado.llegadaDate = new Date(vueloImportado.llegadaDate);
+
+          // Evitar duplicados: revisar por ID
+          if (!vuelosAcumulados.some(v => v.id === vueloImportado.id)) {
+            vuelosAcumulados.push(vueloImportado);
+            vuelosAcumulados.sort((a,b) => a.salidaDate - b.salidaDate);
+            guardarEnLocalStorage();
+            renderizarVuelos();
+            alert("Vuelo importado correctamente.");
+          } else {
+            alert("Este vuelo ya está en la lista.");
+          }
+        } catch (err) {
+          alert("Error al importar vuelo: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+
+      // Limpiar input para que se pueda importar el mismo archivo otra vez si quieres
+      event.target.value = "";
+    }
+
+    // --- Mostrar modal con tarjeta de embarque ---
+   function mostrarTarjeta(id) {
+  const vuelo = vuelosAcumulados.find(v => v.id === id);
+  if (!vuelo) return alert("Vuelo no encontrado.");
+
+  if (!vuelo.boardingPassContent) {
+    const confirmar = confirm("No hay tarjeta de embarque cargada. ¿Querés subir una ahora?");
+    if (confirmar) {
+      // Simula click en input de archivo correspondiente
+      document.getElementById(`file-${id}`).click();
+    }
+    return;
+  }
+
+  const modal = document.getElementById("modal");
+  const modalInner = document.getElementById("modalInner");
+
+  if (vuelo.boardingPassContent.type.startsWith("image/")) {
+    modalInner.innerHTML = `<img src="${vuelo.boardingPassContent.data}" alt="Tarjeta de embarque" style="max-width:100%; max-height:80vh;" />`;
+  } else if (vuelo.boardingPassContent.type === "application/pdf") {
+    modalInner.innerHTML = `<embed src="${vuelo.boardingPassContent.data}" type="application/pdf" width="100%" height="600px" />`;
+  } else {
+    modalInner.innerHTML = `<p>Formato de tarjeta no soportado.</p>`;
+  }
+
+  modal.style.display = "flex";
+}
+
+
+    function cerrarModal() {
+      const modal = document.getElementById("modal");
+      modal.style.display = "none";
+      document.getElementById("modalInner").innerHTML = "";
+    }
+
+    // --- Configurar URL de reserva ---
+    function configurarReserva(id) {
+  const vuelo = vuelosAcumulados.find(v => v.id === id);
+  if (!vuelo) return alert("Vuelo no encontrado.");
+
+  // Si ya tiene una URL de reserva, abrirla en nueva pestaña
+  if (vuelo.reservaURL) {
+    window.open(vuelo.reservaURL, '_blank');
+  }
+
+  const url = prompt("Introduce la URL de reserva para este vuelo:", vuelo.reservaURL || "");
+  if (url !== null) {
+    vuelo.reservaURL = url.trim();
+    guardarEnLocalStorage();
+    alert("URL de reserva guardada.");
+  }
+}
+
+
+    // --- Cargar archivo de tarjeta de embarque (pdf o imagen) ---
+    function cargarArchivo(event, id) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const vuelo = vuelosAcumulados.find(v => v.id === id);
+      if (!vuelo) return alert("Vuelo no encontrado.");
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        vuelo.boardingPassContent = {
+          type: file.type,
+          data: e.target.result
+        };
+        guardarEnLocalStorage();
+        alert("Tarjeta de embarque cargada.");
+      };
+
+      if (file.type.startsWith("image/")) {
+        reader.readAsDataURL(file);
+      } else if (file.type === "application/pdf") {
+        reader.readAsDataURL(file);
+      } else {
+        alert("Tipo de archivo no soportado.");
+      }
+      // Reset input para poder cargar otro archivo si quieres
+      event.target.value = "";
+    }
+
+    // --- Cuenta regresiva para primer vuelo ---
+    let intervalCuenta = null;
+    function iniciarCuentaRegresiva(fechaSalida) {
+      if (intervalCuenta) clearInterval(intervalCuenta);
+
+      const cuentaSpan = document.getElementById("countdown");
+      if (!cuentaSpan) return;
+
+      function actualizar() {
+        const ahora = new Date();
+        const diffMs = fechaSalida - ahora;
+        if (diffMs <= 0) {
+          cuentaSpan.textContent = "¡Vuelo en curso o pasado!";
+          clearInterval(intervalCuenta);
+          return;
+        }
+        const totalSeg = Math.floor(diffMs / 1000);
+const seg = totalSeg % 60;
+const min = Math.floor(totalSeg / 60) % 60;
+const hrs = Math.floor(totalSeg / 3600) % 24;
+const dias = Math.floor(totalSeg / (3600 * 24));
+cuentaSpan.textContent = `Sale en ${dias}d ${hrs}h ${min}m ${seg}s`;
+
+      }
+
+      actualizar();
+      intervalCuenta = setInterval(actualizar, 1000);
+    }
+ window.addEventListener('DOMContentLoaded', () => {
+      cargarDesdeLocalStorage();
+    });
+  function eliminarVuelo(id) {
+  if (!confirm("¿Seguro que quieres eliminar este vuelo?")) return;
+
+  vuelosAcumulados = vuelosAcumulados.filter(v => v.id !== id);
+  guardarEnLocalStorage();
+  renderizarVuelos();
+
+  // Reiniciar cuenta regresiva si quedan vuelos
+  if (vuelosAcumulados.length > 0) {
+    iniciarCuentaRegresiva(vuelosAcumulados[0].salidaDate);
+  } else {
+    // Si no hay vuelos, limpiar contador
+    const cuentaSpan = document.getElementById("countdown");
+    if (cuentaSpan) cuentaSpan.textContent = "";
+  }
+}
+
+function agregarVueloManual(event) {
+  event.preventDefault();
+
+  const form = event.target;
+  const formData = new FormData(form);
+
+  // Obtener campos
+  const origen = formData.get("origen")?.trim().toUpperCase() || "N/A";
+  const destino = formData.get("destino")?.trim().toUpperCase() || "N/A";
+
+  const salidaStr = formData.get("salida");
+  const llegadaStr = formData.get("llegada");
+
+  const salidaDate = salidaStr ? new Date(salidaStr) : new Date();
+  const llegadaDate = llegadaStr ? new Date(llegadaStr) : new Date(salidaDate.getTime() + 60*60*1000);
+
+  const flightNumber = formData.get("flightNumber")?.trim() || "0000";
+  const airlineCode = (formData.get("airlineCode")?.trim().toLowerCase()) || "xx";
+  const marketingCarrierName = formData.get("marketingCarrierName")?.trim() || "Aerolínea Desconocida";
+
+  const durationMinutes = parseInt(formData.get("durationMinutes")) || Math.floor((llegadaDate - salidaDate) / 60000) || 60;
+
+  const transportDescription = formData.get("transportDescription")?.trim() || "N/A";
+
+  const nuevoVuelo = {
+    id: crypto.randomUUID(),
+    origen,
+    destino,
+    salidaDate,
+    llegadaDate,
+    salidaStr: `${salidaDate.getDate()}/${salidaDate.getMonth()+1}/${salidaDate.getFullYear()} ${salidaDate.getHours()}:${salidaDate.getMinutes().toString().padStart(2,'0')}`,
+    llegadaStr: `${llegadaDate.getDate()}/${llegadaDate.getMonth()+1}/${llegadaDate.getFullYear()} ${llegadaDate.getHours()}:${llegadaDate.getMinutes().toString().padStart(2,'0')}`,
+    flightNumber,
+    airlineCode,
+    marketingCarrierName,
+    duracion: formatearMinutos(durationMinutes),
+    transportDescription,
+    layout: null,
+    seatPitch: null,
+    mealsDescription: "N/A",
+    wifiDescription: "N/A",
+    entertainmentDescription: "N/A",
+    powerDescription: "N/A",
+    boardingPassContent: null,
+    reservaURL: null
+  };
+
+  vuelosAcumulados.push(nuevoVuelo);
+  vuelosAcumulados.sort((a,b) => a.salidaDate - b.salidaDate);
+  guardarEnLocalStorage();
+  renderizarVuelos();
+
+  if (vuelosAcumulados.length === 1) {
+    iniciarCuentaRegresiva(nuevoVuelo.salidaDate);
+  }
+
+  alert("Vuelo agregado manualmente.");
+  form.reset();
+}
+
+    
+  </script>
+</body>
+</html>
